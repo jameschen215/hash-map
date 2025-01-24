@@ -4,11 +4,13 @@ export class HashMap {
 	#loaderFactor;
 	#capacity;
 	#buckets;
+	#size;
 
 	constructor(capacity = 16, loaderFactor = 0.75) {
 		this.#capacity = capacity;
 		this.#loaderFactor = loaderFactor;
 		this.#buckets = new Array(this.#capacity).fill(null);
+		this.#size = 0;
 	}
 
 	get capacity() {
@@ -71,23 +73,14 @@ export class HashMap {
 
 	// Return the number of stored keys in the hash map.
 	length() {
-		let count = 0;
-
-		for (let i = 0; i < this.#buckets.length; i++) {
-			if (this.#buckets[i] !== null) {
-				let temp = this.#buckets[i];
-
-				while (temp !== null) {
-					count += 1;
-					temp = temp.nextNode;
-				}
-			}
-		}
-
-		return count;
+		return this.#size;
 	}
 
 	set(key, value) {
+		if (typeof key !== 'string') {
+			throw new Error('Key must be a string');
+		}
+
 		// Check if needed to trigger resize
 		if (this.length() > this.#capacity * this.#loaderFactor) {
 			this.resize();
@@ -99,6 +92,8 @@ export class HashMap {
 
 		if (this.#buckets[index] === null) {
 			this.#buckets[index] = new Node(key, value);
+			this.#size += 1;
+			return true;
 		} else {
 			let current = this.#buckets[index];
 
@@ -112,6 +107,7 @@ export class HashMap {
 				// if end of the list, add the new node
 				if (current.nextNode === null) {
 					current.nextNode = new Node(key, value);
+					this.#size += 1;
 					return true;
 				}
 
@@ -160,41 +156,26 @@ export class HashMap {
 	 */
 	remove(key) {
 		const index = this.hash(key);
+		this.checkOutOfRange(index);
 		let current = this.#buckets[index];
-
-		if (current === null) return false;
-
-		let remove = null;
-		let removeIndex = null;
-		let counter = 0;
+		let prev = null;
 
 		while (current !== null) {
 			if (current.key === key) {
-				remove = current;
-				removeIndex = counter;
-			}
-
-			counter += 1;
-			current = current.nextNode;
-		}
-
-		if (remove !== null) {
-			if (removeIndex === 0) {
-				this.#buckets[index] =
-					remove.nextNode !== null ? remove.nextNode : null;
-				return true;
-			} else {
-				let count = 0;
-				let temp = this.#buckets[index];
-				while (temp !== null) {
-					if (count === removeIndex - 1) {
-						temp.nextNode = temp.nextNode.nextNode;
-						return true;
-					}
-					temp = temp.nextNode;
-					count += 1;
+				if (prev === null) {
+					// Handle head node case
+					this.#buckets[index] = current.nextNode;
+				} else {
+					// Handle middle or tail case
+					prev.nextNode = current.nextNode;
 				}
+
+				this.#size -= 1;
+				return true;
 			}
+
+			prev = current;
+			current = current.nextNode;
 		}
 
 		return false;
@@ -268,3 +249,62 @@ export class HashMap {
 		);
 	}
 }
+
+/**
+ * remove(key) {
+		const index = this.hash(key);
+		let current = this.#buckets[index];
+
+		let remove = null;
+		let removeIndex = null;
+		let counter = 0;
+
+		while (current !== null) {
+			if (current.key === key) {
+				remove = current;
+				removeIndex = counter;
+			}
+
+			counter += 1;
+			current = current.nextNode;
+		}
+
+		if (remove !== null) {
+			if (removeIndex === 0) {
+				this.#buckets[index] =
+					remove.nextNode !== null ? remove.nextNode : null;
+				return true;
+			} else {
+				let count = 0;
+				let temp = this.#buckets[index];
+				while (temp !== null) {
+					if (count === removeIndex - 1) {
+						temp.nextNode = temp.nextNode.nextNode;
+						return true;
+					}
+					temp = temp.nextNode;
+					count += 1;
+				}
+			}
+		}
+
+		return false;
+	}
+
+		length() {
+		let count = 0;
+
+		for (let i = 0; i < this.#buckets.length; i++) {
+			if (this.#buckets[i] !== null) {
+				let temp = this.#buckets[i];
+
+				while (temp !== null) {
+					count += 1;
+					temp = temp.nextNode;
+				}
+			}
+		}
+
+		return count;
+	}
+ */

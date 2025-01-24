@@ -4,11 +4,13 @@ export class HashSet {
 	#loaderFactor;
 	#capacity;
 	#buckets;
+	#size;
 
 	constructor(capacity = 16, loaderFactor = 0.75) {
 		this.#capacity = capacity;
 		this.#loaderFactor = loaderFactor;
 		this.#buckets = new Array(this.#capacity).fill(null);
+		this.#size = 0;
 	}
 
 	get capacity() {
@@ -72,24 +74,15 @@ export class HashSet {
 
 	// Return the number of stored keys in the hash map.
 	length() {
-		let count = 0;
-
-		for (let i = 0; i < this.#buckets.length; i++) {
-			if (this.#buckets[i] !== null) {
-				let temp = this.#buckets[i];
-
-				while (temp !== null) {
-					count += 1;
-					temp = temp.nextNode;
-				}
-			}
-		}
-
-		return count;
+		return this.#size;
 	}
 
 	// Add element to the hash set.
 	add(value) {
+		if (typeof value !== 'string') {
+			throw new Error('Value must be a string');
+		}
+
 		// Check if needed to trigger resize
 		if (this.length() > this.#capacity * this.#loaderFactor) {
 			this.resize();
@@ -101,6 +94,7 @@ export class HashSet {
 
 		if (this.#buckets[index] === null) {
 			this.#buckets[index] = new NodeSet(value);
+			this.#size += 1;
 			return true;
 		} else {
 			let current = this.#buckets[index];
@@ -112,6 +106,7 @@ export class HashSet {
 
 				if (current.nextNode === null) {
 					current.nextNode = new NodeSet(value);
+					this.#size += 1;
 					return true;
 				}
 
@@ -122,44 +117,27 @@ export class HashSet {
 
 	remove(value) {
 		const index = this.hash(value);
-
 		this.checkOutOfRange(index);
 
 		let current = this.#buckets[index];
-		let remove = null;
-		let removeIndex = null;
-		let counter = 0;
+		let prev = null;
 
 		while (current !== null) {
 			if (current.value === value) {
-				remove = current;
-				removeIndex = counter;
-			}
-
-			counter += 1;
-			current = current.nextNode;
-		}
-
-		console.log({ removeIndex, remove });
-
-		if (remove !== null) {
-			if (removeIndex === 0) {
-				this.#buckets[index] =
-					remove.nextNode !== null ? remove.nextNode : null;
-				return true;
-			} else {
-				let count = 0;
-				let temp = this.#buckets[index];
-
-				while (temp !== null) {
-					if (count === removeIndex - 1) {
-						temp.nextNode = temp.nextNode.nextNode;
-						return true;
-					}
-					temp = temp.nextNode;
-					count += 1;
+				if (prev === null) {
+					// Handle head node case
+					this.#buckets[index] = current.nextNode;
+				} else {
+					// Handle middle or tail node case
+					prev.nextNode = current.nextNode;
 				}
+
+				this.#size -= 1;
+				return true;
 			}
+
+			prev = current;
+			current = current.nextNode;
 		}
 
 		return false;
@@ -170,10 +148,7 @@ export class HashSet {
 		let current = this.#buckets[index];
 
 		while (current !== null) {
-			if (current.value === value) {
-				return true;
-			}
-
+			if (current.value === value) return true;
 			current = current.nextNode;
 		}
 
@@ -201,8 +176,16 @@ export class HashSet {
 	}
 
 	print() {
-		this.#buckets.forEach((bucket, index) =>
-			console.log(`${index} - `, bucket)
-		);
+		this.#buckets.forEach((bucket, index) => {
+			if (bucket !== null) {
+				let current = bucket;
+				let values = [];
+				while (current !== null) {
+					values.push(current.value);
+					current = current.nextNode;
+				}
+				console.log(`${index}: ${values.join(' -> ')}`);
+			}
+		});
 	}
 }
